@@ -1,6 +1,7 @@
+// FIX EXPORT FOR RENDER
 import obtenerDatosEtiqueta from '../services/etiquetas.service.js';
 
-export default async function getEtiquetasPorEntrega(req, res) {
+export async function getEtiquetasPorEntrega(req, res) {
   try {
     const { entrega_id } = req.params;
     const spreadsheetId = process.env.SPREADSHEET_ID;
@@ -32,16 +33,12 @@ body {
   text-transform: uppercase;
 }
 
-/* =========================
-   ETIQUETA DE ENVÍO
-   ========================= */
 .envio {
   display: ${esSantaCruz ? 'none' : 'flex'};
   height: 45%;
   border: 2px solid #000;
   padding: 10mm;
   box-sizing: border-box;
-
   flex-direction: column;
   justify-content: center;
   align-items: center;
@@ -64,9 +61,6 @@ body {
   font-size: 26px;
 }
 
-/* =========================
-   ETIQUETA DE ALMACÉN (HORIZONTAL)
-   ========================= */
 .almacen-zone {
   margin-top: ${esSantaCruz ? '0' : '8mm'};
 }
@@ -74,11 +68,9 @@ body {
 .almacen {
   width: 100%;
   height: 45mm;
-
   border: 2px solid #000;
   box-sizing: border-box;
   padding: 5mm;
-
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -111,14 +103,12 @@ body {
 
 <body>
 
-<!-- ETIQUETA DE ENVÍO -->
 <div class="envio">
   <div class="cliente">${data.cliente_nombre}</div>
   <div class="destino">${data.departamento_destino}</div>
   <div class="telefono">${data.cliente_telefono}</div>
 </div>
 
-<!-- ETIQUETA DE ALMACÉN (HORIZONTAL) -->
 <div class="almacen-zone">
   <div class="almacen">
     <div class="qr">

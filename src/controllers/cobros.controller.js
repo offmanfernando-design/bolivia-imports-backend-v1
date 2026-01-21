@@ -1,4 +1,4 @@
-import { sheets, SPREADSHEET_ID } from '../config/googleSheets.js';
+import { SPREADSHEET_ID, sheets } from '../config/googleSheets.js';
 import sheetsService from '../services/sheets.service.js';
 import {
   filtrarTexto,
@@ -6,7 +6,11 @@ import {
   filtrarFecha
 } from '../utils/filtros.js';
 
-const SHEET_NAME = 'entregas_DB';
+/**
+ * ⚠️ IMPORTANTE
+ * Nombre EXACTO de la hoja en Google Sheets
+ */
+const SHEET_NAME = 'ENTREGAS_DB';
 
 /* =========================
    Helper: actualizar filas
@@ -78,7 +82,7 @@ export async function listarCobros(req, res) {
 
     res.json(Object.values(porCliente));
   } catch (error) {
-    console.error(error);
+    console.error('ERROR LISTAR COBROS:', error);
     res.status(500).json({ error: 'Error al obtener cobros' });
   }
 }

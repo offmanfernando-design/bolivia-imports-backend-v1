@@ -1,8 +1,14 @@
 import express from 'express';
-import { getEtiquetasPorEntrega } from '../controllers/etiquetas.controller.js';
+import {
+  crearEntrega
+} from '../controllers/entregas.controller.js';
 
 const router = express.Router();
 
-router.get('/entregas/:entrega_id/etiquetas', getEtiquetasPorEntrega);
+/**
+ * POST /api/entregas
+ * Crear nueva entrega (Google Sheets → Backend)
+ */
+router.post('/', crearEntrega);
 
 export default router;

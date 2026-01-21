@@ -18,11 +18,14 @@ export async function crearEntregaController(req, res) {
       ok: true,
       entrega_id: result.entrega_id,
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      ok: false,
-      error: 'Error creando la entrega',
-    });
-  }
+} catch (error) {
+  console.error('ERROR REAL CREAR ENTREGA:', error);
+
+  res.status(500).json({
+    ok: false,
+    error: error.message || String(error),
+    stack: error.stack,
+  });
+}
+
 }

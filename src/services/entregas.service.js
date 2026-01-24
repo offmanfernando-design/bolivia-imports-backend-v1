@@ -48,18 +48,18 @@ const ubicacion_fisica = filaRKT ? filaRKT[29] || '' : '';
 
 
   // 2. Armar fila según contrato ENTREGAS_DB
-  const nuevaFila = [
+const nuevaFila = [
   entregaId,
   data.tracking || '',
-  cliente_id,                  // ✅ USAR lo resuelto
+  cliente_id,
   data.cliente_nombre || '',
-  telefono,                    // ✅ USAR lo resuelto
+  telefono,
   data.descripcion_producto || '',
   Number(data.cantidad_items) || '',
   Number(data.peso_cobrado) || '',
   Number(data.volumen) || '',
   data.departamento_destino || '',
-  data.ubicacion_fisica,
+  data.ubicacion_fisica || '',   // ← COLUMNA K (LISTO)
   'en_almacen',
   fechaHoy,
   '',
@@ -68,6 +68,7 @@ const ubicacion_fisica = filaRKT ? filaRKT[29] || '' : '';
   'pendiente',
   ''
 ];
+
 
   // 3. Insertar fila
   await sheets.spreadsheets.values.append({

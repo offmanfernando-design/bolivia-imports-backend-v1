@@ -30,6 +30,22 @@ export async function crearEntrega(data, spreadsheetId) {
 
 const fechaHoy = fechaLocalYYYYMMDD();
 
+// 🔹 LEER UBICACION DESDE RKT Jacke (columna AD)
+const RKT_SHEET = 'RKT Jacke';
+
+const rktRes = await sheets.spreadsheets.values.get({
+  spreadsheetId,
+  range: `${RKT_SHEET}!A2:AD`,
+});
+
+const filasRKT = rktRes.data.values || [];
+
+// buscamos por tracking
+const filaRKT = filasRKT.find(r => String(r[0]) === String(data.tracking));
+
+// Columna AD = índice 29 (A=0)
+const ubicacion_fisica = filaRKT ? filaRKT[29] || '' : '';
+
 
   // 2. Armar fila según contrato ENTREGAS_DB
   const nuevaFila = [
@@ -43,7 +59,7 @@ const fechaHoy = fechaLocalYYYYMMDD();
   Number(data.peso_cobrado) || '',
   Number(data.volumen) || '',
   data.departamento_destino || '',
-  '',
+  data.ubicacion_fisica,
   'en_almacen',
   fechaHoy,
   '',

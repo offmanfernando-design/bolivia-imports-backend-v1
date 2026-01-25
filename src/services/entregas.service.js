@@ -67,8 +67,9 @@ const nuevaFila = [
   Number(data.monto_total_bs) || '',
   'pendiente',
   '',
-  data.tipo_de_cobro !== undefined ? Number(data.tipo_de_cobro) : '',
-  data.dolar_cliente !== undefined ? Number(data.dolar_cliente) : ''
+data.tipo_cobro !== undefined ? Number(data.tipo_cobro) : '',
+data.dolar_cliente !== undefined ? Number(data.dolar_cliente) : ''
+
 ];
 
 

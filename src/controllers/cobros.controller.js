@@ -6,14 +6,10 @@ import {
   filtrarFecha
 } from '../utils/filtros.js';
 
-/**
- * ⚠️ IMPORTANTE
- * Nombre EXACTO de la hoja en Google Sheets
- */
 const SHEET_NAME = 'ENTREGAS_DB';
 
 /* =========================
-   Helper: actualizar filas
+   Helper batch update
    ========================= */
 async function actualizarFilas(updates) {
   await sheets.spreadsheets.values.batchUpdate({
@@ -27,17 +23,11 @@ async function actualizarFilas(updates) {
 
 /* =========================
    GET /api/cobros
+   (RESUMEN por cliente)
    ========================= */
 export async function listarCobros(req, res) {
   try {
-    const {
-      estado_cobro,
-      q,
-      tracking_last4,
-      fecha_desde,
-      fecha_hasta
-    } = req.query;
-
+    const { estado_cobro, q, tracking_last4, fecha_desde, fecha_hasta } = req.query;
     if (!estado_cobro) {
       return res.status(400).json({ error: 'estado_cobro es obligatorio' });
     }
@@ -54,36 +44,41 @@ export async function listarCobros(req, res) {
     const porCliente = {};
 
     for (const e of filtradas) {
-      const id = e.cliente_id;
-
-      if (!porCliente[id]) {
-        porCliente[id] = {
+      if (!porCliente[e.cliente_id]) {
+        porCliente[e.cliente_id] = {
           cliente_id: e.cliente_id,
           cliente_nombre: e.cliente_nombre,
           cliente_telefono: e.cliente_telefono,
           departamento_destino: e.departamento_destino,
-          cantidad_items: 0,
           monto_total_bs: 0,
-          entregas: []
+          avisos_count: Number(e.avisos_count || 0)
         };
       }
-
-      porCliente[id].cantidad_items += Number(e.cantidad_items || 0);
-      porCliente[id].monto_total_bs += Number(e.monto_total_bs || 0);
-
-      porCliente[id].entregas.push({
-        entrega_id: e.entrega_id,
-        tracking: e.tracking,
-        descripcion_producto: e.descripcion_producto,
-        cantidad_items: Number(e.cantidad_items || 0),
-        monto_total_bs: Number(e.monto_total_bs || 0)
-      });
+      porCliente[e.cliente_id].monto_total_bs += Number(e.monto_total_bs || 0);
     }
 
     res.json(Object.values(porCliente));
-  } catch (error) {
-    console.error('ERROR LISTAR COBROS:', error);
-    res.status(500).json({ error: 'Error al obtener cobros' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error listar cobros' });
+  }
+}
+
+/* =========================
+   GET /api/cobros/detalle/:cliente_id
+   (DETALLE REAL PARA MENSAJE)
+   ========================= */
+export async function detalleCobro(req, res) {
+  try {
+    const { cliente_id } = req.params;
+    const entregas = await sheetsService.getEntregas();
+
+    const detalle = entregas.filter(e => e.cliente_id === cliente_id);
+
+    res.json(detalle);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error detalle cobro' });
   }
 }
 
@@ -93,40 +88,32 @@ export async function listarCobros(req, res) {
 export async function avisarCobro(req, res) {
   try {
     const { cliente_id } = req.body;
-
-    if (!cliente_id) {
-      return res.status(400).json({ error: 'cliente_id es obligatorio' });
-    }
+    if (!cliente_id) return res.status(400).json({ error: 'cliente_id requerido' });
 
     const entregas = await sheetsService.getEntregas();
     const hoy = new Date().toISOString().split('T')[0];
 
     const updates = [];
+    let nuevoContador = 0;
 
     entregas.forEach((e, index) => {
       if (e.cliente_id === cliente_id && e.estado_cobro === 'pendiente') {
-        const rowNumber = index + 2;
+        const row = index + 2;
+        nuevoContador = Number(e.avisos_count || 0) + 1;
 
         updates.push(
-          { range: `${SHEET_NAME}!O${rowNumber}`, values: [[hoy]] },
-          { range: `${SHEET_NAME}!P${rowNumber}`, values: [[e.monto_total_bs || '']] },
-          { range: `${SHEET_NAME}!Q${rowNumber}`, values: [['avisado']] }
+          { range: `${SHEET_NAME}!O${row}`, values: [[hoy]] },
+          { range: `${SHEET_NAME}!Q${row}`, values: [['avisado']] },
+          { range: `${SHEET_NAME}!U${row}`, values: [[nuevoContador]] }
         );
       }
     });
 
-    if (!updates.length) {
-      return res.status(400).json({
-        error: 'No hay entregas pendientes para este cliente'
-      });
-    }
-
     await actualizarFilas(updates);
-
-    res.json({ ok: true, mensaje: 'Cobros avisados correctamente' });
-  } catch (error) {
-    console.error('ERROR AVISAR COBRO:', error);
-    res.status(500).json({ error: 'Error al avisar cobro' });
+    res.json({ ok: true, avisos_count: nuevoContador });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error avisar' });
   }
 }
 
@@ -136,11 +123,6 @@ export async function avisarCobro(req, res) {
 export async function confirmarPago(req, res) {
   try {
     const { cliente_id } = req.body;
-
-    if (!cliente_id) {
-      return res.status(400).json({ error: 'cliente_id es obligatorio' });
-    }
-
     const entregas = await sheetsService.getEntregas();
     const hoy = new Date().toISOString().split('T')[0];
 
@@ -148,28 +130,19 @@ export async function confirmarPago(req, res) {
 
     entregas.forEach((e, index) => {
       if (e.cliente_id === cliente_id && e.estado_cobro === 'avisado') {
-        const rowNumber = index + 2;
-
+        const row = index + 2;
         updates.push(
-          { range: `${SHEET_NAME}!L${rowNumber}`, values: [['entregado']] },
-          { range: `${SHEET_NAME}!N${rowNumber}`, values: [[hoy]] },
-          { range: `${SHEET_NAME}!O${rowNumber}`, values: [[hoy]] },
-          { range: `${SHEET_NAME}!Q${rowNumber}`, values: [['pagado']] }
+          { range: `${SHEET_NAME}!L${row}`, values: [['entregado']] },
+          { range: `${SHEET_NAME}!N${row}`, values: [[hoy]] },
+          { range: `${SHEET_NAME}!Q${row}`, values: [['pagado']] }
         );
       }
     });
 
-    if (!updates.length) {
-      return res.status(400).json({
-        error: 'No hay entregas avisadas para este cliente'
-      });
-    }
-
     await actualizarFilas(updates);
-
-    res.json({ ok: true, mensaje: 'Pago confirmado correctamente' });
-  } catch (error) {
-    console.error('ERROR CONFIRMAR PAGO:', error);
-    res.status(500).json({ error: 'Error al confirmar pago' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error pagar' });
   }
 }

@@ -23,7 +23,6 @@ async function actualizarFilas(updates) {
 
 /* =========================
    GET /api/cobros
-   (RESUMEN por cliente)
    ========================= */
 export async function listarCobros(req, res) {
   try {
@@ -66,16 +65,12 @@ export async function listarCobros(req, res) {
 
 /* =========================
    GET /api/cobros/detalle/:cliente_id
-   (DETALLE REAL PARA MENSAJE)
    ========================= */
 export async function detalleCobro(req, res) {
   try {
     const { cliente_id } = req.params;
     const entregas = await sheetsService.getEntregas();
-
-    const detalle = entregas.filter(e => e.cliente_id === cliente_id);
-
-    res.json(detalle);
+    res.json(entregas.filter(e => e.cliente_id === cliente_id));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error detalle cobro' });
@@ -95,6 +90,17 @@ export async function avisarCobro(req, res) {
     const entregas = await sheetsService.getEntregas();
     const hoy = new Date().toISOString().split('T')[0];
 
+    // Bloqueo: ya avisado hoy
+    const yaAvisadoHoy = entregas.some(e =>
+      e.cliente_id === cliente_id &&
+      e.ultima_accion === 'AVISO' &&
+      e.ultima_accion_fecha === hoy
+    );
+
+    if (yaAvisadoHoy) {
+      return res.status(400).json({ error: 'Ya se avisó hoy' });
+    }
+
     const updates = [];
     let nuevoContador = null;
 
@@ -108,22 +114,24 @@ export async function avisarCobro(req, res) {
         const actual = Number(e.avisos_count || 0);
         nuevoContador = actual + 1;
 
+        const accion =
+          e.estado_cobro === 'avisado' ? 'REAVISO' : 'AVISO';
+
         updates.push(
-          { range: `${SHEET_NAME}!O${row}`, values: [[hoy]] },        // fecha aviso
-          { range: `${SHEET_NAME}!Q${row}`, values: [['avisado']] }, // estado
-          { range: `${SHEET_NAME}!U${row}`, values: [[nuevoContador]] } // contador
+          { range: `${SHEET_NAME}!O${row}`, values: [[hoy]] },
+          { range: `${SHEET_NAME}!Q${row}`, values: [['avisado']] },
+          { range: `${SHEET_NAME}!U${row}`, values: [[nuevoContador]] }, // NO TOCAR
+          { range: `${SHEET_NAME}!V${row}`, values: [[accion]] },
+          { range: `${SHEET_NAME}!W${row}`, values: [[hoy]] }
         );
       }
     });
 
     if (!updates.length) {
-      return res.status(400).json({
-        error: 'No hay entregas para avisar'
-      });
+      return res.status(400).json({ error: 'No hay entregas para avisar' });
     }
 
     await actualizarFilas(updates);
-
     res.json({ ok: true, avisos_count: nuevoContador });
   } catch (err) {
     console.error(err);
@@ -148,7 +156,9 @@ export async function confirmarPago(req, res) {
         updates.push(
           { range: `${SHEET_NAME}!L${row}`, values: [['entregado']] },
           { range: `${SHEET_NAME}!N${row}`, values: [[hoy]] },
-          { range: `${SHEET_NAME}!Q${row}`, values: [['pagado']] }
+          { range: `${SHEET_NAME}!Q${row}`, values: [['pagado']] },
+          { range: `${SHEET_NAME}!V${row}`, values: [['PAGO']] },
+          { range: `${SHEET_NAME}!W${row}`, values: [[hoy]] }
         );
       }
     });

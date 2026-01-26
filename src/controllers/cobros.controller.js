@@ -88,32 +88,46 @@ export async function detalleCobro(req, res) {
 export async function avisarCobro(req, res) {
   try {
     const { cliente_id } = req.body;
-    if (!cliente_id) return res.status(400).json({ error: 'cliente_id requerido' });
+    if (!cliente_id) {
+      return res.status(400).json({ error: 'cliente_id requerido' });
+    }
 
     const entregas = await sheetsService.getEntregas();
     const hoy = new Date().toISOString().split('T')[0];
 
     const updates = [];
-    let nuevoContador = 0;
+    let nuevoContador = null;
 
     entregas.forEach((e, index) => {
-      if (e.cliente_id === cliente_id && e.estado_cobro === 'pendiente') {
+      if (
+        e.cliente_id === cliente_id &&
+        (e.estado_cobro === 'pendiente' || e.estado_cobro === 'avisado')
+      ) {
         const row = index + 2;
-        nuevoContador = Number(e.avisos_count || 0) + 1;
+
+        const actual = Number(e.avisos_count || 0);
+        nuevoContador = actual + 1;
 
         updates.push(
-          { range: `${SHEET_NAME}!O${row}`, values: [[hoy]] },
-          { range: `${SHEET_NAME}!Q${row}`, values: [['avisado']] },
-          { range: `${SHEET_NAME}!U${row}`, values: [[nuevoContador]] }
+          { range: `${SHEET_NAME}!O${row}`, values: [[hoy]] },        // fecha aviso
+          { range: `${SHEET_NAME}!Q${row}`, values: [['avisado']] }, // estado
+          { range: `${SHEET_NAME}!U${row}`, values: [[nuevoContador]] } // contador
         );
       }
     });
 
+    if (!updates.length) {
+      return res.status(400).json({
+        error: 'No hay entregas para avisar'
+      });
+    }
+
     await actualizarFilas(updates);
+
     res.json({ ok: true, avisos_count: nuevoContador });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Error avisar' });
+    res.status(500).json({ error: 'Error avisar cobro' });
   }
 }
 

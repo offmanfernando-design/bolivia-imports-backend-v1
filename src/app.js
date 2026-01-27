@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import entregasRoutes from './routes/entregas.routes.js';
 import etiquetasRoutes from './routes/etiquetas.routes.js';
 import cobrosRoutes from './routes/cobros.routes.js';
+import cotizadorRoutes from './routes/cotizador.routes.js';
 console.log('ETIQUETAS ROUTES LOADED');
 console.log('APP.JS LOADED DESDE:', process.cwd());
 
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use('/api/entregas', entregasRoutes);
 app.use('/api', etiquetasRoutes);
 app.use('/api/cobros', cobrosRoutes);
+app.use('/api/cotizador', cotizadorRoutes);
 
 
 app.get('/health', (req, res) => {

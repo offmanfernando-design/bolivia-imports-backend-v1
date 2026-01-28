@@ -1,5 +1,6 @@
 import express from 'express';
-import { sheets } from '../services/googleSheets.js';
+import { sheets, SPREADSHEET_ID } from '../config/googleSheets.js';
+
 
 const router = express.Router();
 const spreadsheetId = process.env.SPREADSHEET_ID;
